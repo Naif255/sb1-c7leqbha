@@ -1,0 +1,44 @@
+{
+  "surahId": "ikhlas",
+  "surahName": "الإخلاص",
+  "surahNameTranslation": "The Sincerity",
+  "surahNumber": 112,
+  "verses": [
+    {
+      "verseNumber": 1,
+      "arabicText": "قُلْ هُوَ ٱللَّهُ أَحَدٌ",
+      "transliteration": "Qul huwa Allāhu aḥad",
+      "translation": "Say, He is Allah, [who is] One",
+      "gestureKey": "index_finger_up",
+      "gestureName": "التوحيد",
+      "gestureDescription": "Point index finger upward to signify Oneness"
+    },
+    {
+      "verseNumber": 2,
+      "arabicText": "ٱللَّهُ ٱلصَّمَدُ",
+      "transliteration": "Allāhu ṣ-ṣamad",
+      "translation": "Allah, the Eternal Refuge",
+      "gestureKey": "palms_facing",
+      "gestureName": "الأبدي",
+      "gestureDescription": "Palms facing forward to show eternal presence"
+    },
+    {
+      "verseNumber": 3,
+      "arabicText": "لَمْ يَلِدْ وَلَمْ يُولَدْ",
+      "transliteration": "Lam yalid wa lam yūlad",
+      "translation": "He neither begets nor is born",
+      "gestureKey": "hands_moving_apart",
+      "gestureName": "النفي",
+      "gestureDescription": "Hands moving apart to signify negation"
+    },
+    {
+      "verseNumber": 4,
+      "arabicText": "وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ",
+      "transliteration": "Wa lam yakun lahu kufuwan aḥad",
+      "translation": "Nor is there to Him any equivalent",
+      "gestureKey": "fingertips_touch",
+      "gestureName": "المساواة",
+      "gestureDescription": "Fingertips touching to show equality concept"
+    }
+  ]
+}
