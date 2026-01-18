@@ -59,9 +59,10 @@ export function useGestureRecognition() {
       return;
     }
 
-    const palmSideways = Math.abs(indexTip.z - pinkyTip.z) > 0.12;
+    const allFingersClosed = indexDown && middleDown && ringDown && pinkyDown;
+    const thumbClosed = thumbTip.y > hand[2].y;
     
-    if (allFingersExtended && palmSideways) {
+    if (allFingersClosed && thumbClosed) {
       setCurrentGesture('hands_moving_apart');
       return;
     }
