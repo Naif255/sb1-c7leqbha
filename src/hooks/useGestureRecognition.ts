@@ -25,32 +25,72 @@ export function useGestureRecognition() {
     }
 
     const hand = landmarks[0];
+    
+    // النقاط المهمة في اليد
     const thumbTip = hand[4];
+    const thumbIP = hand[3];
     const indexTip = hand[8];
+    const indexPIP = hand[6];
     const middleTip = hand[12];
+    const middlePIP = hand[10];
     const ringTip = hand[16];
+    const ringPIP = hand[14];
     const pinkyTip = hand[20];
+    const pinkyPIP = hand[18];
     const wrist = hand[0];
+    const indexMCP = hand[5];
+    const palmBase = hand[0];
 
-    const indexUp = indexTip.y < hand[6].y;
-    const middleUp = middleTip.y < hand[10].y;
-    const ringUp = ringTip.y < hand[14].y;
-    const pinkyUp = pinkyTip.y < hand[18].y;
-    const thumbOut = Math.abs(thumbTip.x - wrist.x) > 0.1;
-
-    if (indexUp && !middleUp && !ringUp && !pinkyUp) {
-      setCurrentGesture('one');
-    } else if (indexUp && middleUp && !ringUp && !pinkyUp) {
-      setCurrentGesture('two');
-    } else if (indexUp && middleUp && ringUp && !pinkyUp) {
-      setCurrentGesture('three');
-    } else if (indexUp && middleUp && ringUp && pinkyUp && !thumbOut) {
-      setCurrentGesture('four');
-    } else if (indexUp && middleUp && ringUp && pinkyUp && thumbOut) {
-      setCurrentGesture('five');
-    } else {
-      setCurrentGesture('unknown');
+    // حساب المسافات والزوايا
+    const indexUp = indexTip.y < indexPIP.y;
+    const middleUp = middleTip.y < middlePIP.y;
+    const ringUp = ringTip.y < ringPIP.y;
+    const pinkyUp = pinkyTip.y < pinkyPIP.y;
+    
+    // حساب إذا الأصابع ممدودة
+    const indexExtended = Math.abs(indexTip.y - indexMCP.y) > 0.1;
+    const middleExtended = Math.abs(middleTip.y - indexMCP.y) > 0.1;
+    const ringExtended = Math.abs(ringTip.y - indexMCP.y) > 0.1;
+    const pinkyExtended = Math.abs(pinkyTip.y - indexMCP.y) > 0.1;
+    
+    // حساب المسافة بين أطراف الأصابع
+    const fingertipsDistance = Math.sqrt(
+      Math.pow(thumbTip.x - indexTip.x, 2) + 
+      Math.pow(thumbTip.y - indexTip.y, 2)
+    );
+    
+    // حساب إذا الكف مواجه للكاميرا
+    const palmFacingForward = Math.abs(thumbTip.z - pinkyTip.z) < 0.05;
+    
+    // التعرف على الإشارات حسب JSON
+    
+    // 1. index_finger_up - إصبع السبابة لفوق (التوحيد)
+    if (indexUp && indexExtended && !middleUp && !ringUp && !pinkyUp) {
+      setCurrentGesture('index_finger_up');
+      return;
     }
+    
+    // 2. palms_facing - الكف مواجه (الأبدي)
+    if (indexExtended && middleExtended && ringExtended && pinkyExtended && palmFacingForward) {
+      setCurrentGesture('palms_facing');
+      return;
+    }
+    
+    // 3. hands_moving_apart - الأيدي متباعدة (النفي)
+    // نفس إشارة الكف المفتوح لكن بحركة
+    if (indexExtended && middleExtended && ringExtended && palmFacingForward) {
+      setCurrentGesture('hands_moving_apart');
+      return;
+    }
+    
+    // 4. fingertips_touch - أطراف الأصابع تلمس (المساواة)
+    if (fingertipsDistance < 0.05) {
+      setCurrentGesture('fingertips_touch');
+      return;
+    }
+    
+    // إذا ما طابقت أي إشارة
+    setCurrentGesture('unknown');
   }, []);
 
   const onResults = useCallback(
