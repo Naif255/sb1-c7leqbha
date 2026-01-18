@@ -17,18 +17,19 @@ export function useGestureRecognition() {
   const [isReady, setIsReady] = useState(false);
   const handsRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
+  const previousHandPositionRef = useRef<any>(null);
 
   const recognizeGesture = useCallback((landmarks: any) => {
     if (!landmarks || landmarks.length === 0) {
       setCurrentGesture('unknown');
+      previousHandPositionRef.current = null;
       return;
     }
 
     const hand = landmarks[0];
     
-    // النقاط المهمة في اليد
+    // النقاط المهمة
     const thumbTip = hand[4];
-    const thumbIP = hand[3];
     const indexTip = hand[8];
     const indexPIP = hand[6];
     const middleTip = hand[12];
@@ -38,58 +39,69 @@ export function useGestureRecognition() {
     const pinkyTip = hand[20];
     const pinkyPIP = hand[18];
     const wrist = hand[0];
-    const indexMCP = hand[5];
-    const palmBase = hand[0];
 
-    // حساب المسافات والزوايا
-    const indexUp = indexTip.y < indexPIP.y;
-    const middleUp = middleTip.y < middlePIP.y;
-    const ringUp = ringTip.y < ringPIP.y;
-    const pinkyUp = pinkyTip.y < pinkyPIP.y;
+    // ☝️ 1. التوحيد - إصبع السبابة للأعلى فقط
+    const indexUp = indexTip.y < indexPIP.y - 0.05;
+    const middleDown = middleTip.y > middlePIP.y;
+    const ringDown = ringTip.y > ringPIP.y;
+    const pinkyDown = pinkyTip.y > pinkyPIP.y;
     
-    // حساب إذا الأصابع ممدودة
-    const indexExtended = Math.abs(indexTip.y - indexMCP.y) > 0.1;
-    const middleExtended = Math.abs(middleTip.y - indexMCP.y) > 0.1;
-    const ringExtended = Math.abs(ringTip.y - indexMCP.y) > 0.1;
-    const pinkyExtended = Math.abs(pinkyTip.y - indexMCP.y) > 0.1;
+    if (indexUp && middleDown && ringDown && pinkyDown) {
+      setCurrentGesture('index_finger_up');
+      previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
+      return;
+    }
+
+    // 🙌 2. الأبدي - راحتا اليدين للأمام (كل الأصابع ممدودة)
+    const allFingersUp = 
+      indexTip.y < indexPIP.y &&
+      middleTip.y < middlePIP.y &&
+      ringTip.y < ringPIP.y &&
+      pinkyTip.y < pinkyPIP.y;
     
-    // حساب المسافة بين أطراف الأصابع
+    // التأكد إن الكف مواجه (z قريب من بعض)
+    const palmFacing = Math.abs(indexTip.z - pinkyTip.z) < 0.08;
+    
+    if (allFingersUp && palmFacing) {
+      setCurrentGesture('palms_facing');
+      previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
+      return;
+    }
+
+    // ↔️ 3. النفي - حركة اليدين بعيداً (نكتشف الحركة)
+    if (previousHandPositionRef.current && allFingersUp) {
+      const currentX = wrist.x;
+      const previousX = previousHandPositionRef.current.x;
+      const movement = Math.abs(currentX - previousX);
+      
+      // إذا في حركة أفقية واضحة
+      if (movement > 0.08) {
+        setCurrentGesture('hands_moving_apart');
+        previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
+        return;
+      }
+    }
+
+    // 🤲 4. المساواة - لمس أطراف الأصابع (الإبهام والسبابة قريبين جداً)
     const fingertipsDistance = Math.sqrt(
       Math.pow(thumbTip.x - indexTip.x, 2) + 
-      Math.pow(thumbTip.y - indexTip.y, 2)
+      Math.pow(thumbTip.y - indexTip.y, 2) +
+      Math.pow(thumbTip.z - indexTip.z, 2)
     );
     
-    // حساب إذا الكف مواجه للكاميرا
-    const palmFacingForward = Math.abs(thumbTip.z - pinkyTip.z) < 0.05;
+    // إذا كل الأصابع قريبة من بعض (شكل قبة)
+    const allFingertipsClose = 
+      fingertipsDistance < 0.06 &&
+      Math.sqrt(Math.pow(thumbTip.x - middleTip.x, 2) + Math.pow(thumbTip.y - middleTip.y, 2)) < 0.08;
     
-    // التعرف على الإشارات حسب JSON
-    
-    // 1. index_finger_up - إصبع السبابة لفوق (التوحيد)
-    if (indexUp && indexExtended && !middleUp && !ringUp && !pinkyUp) {
-      setCurrentGesture('index_finger_up');
-      return;
-    }
-    
-    // 2. palms_facing - الكف مواجه (الأبدي)
-    if (indexExtended && middleExtended && ringExtended && pinkyExtended && palmFacingForward) {
-      setCurrentGesture('palms_facing');
-      return;
-    }
-    
-    // 3. hands_moving_apart - الأيدي متباعدة (النفي)
-    // نفس إشارة الكف المفتوح لكن بحركة
-    if (indexExtended && middleExtended && ringExtended && palmFacingForward) {
-      setCurrentGesture('hands_moving_apart');
-      return;
-    }
-    
-    // 4. fingertips_touch - أطراف الأصابع تلمس (المساواة)
-    if (fingertipsDistance < 0.05) {
+    if (allFingertipsClose) {
       setCurrentGesture('fingertips_touch');
+      previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
       return;
     }
-    
-    // إذا ما طابقت أي إشارة
+
+    // حفظ الموقع الحالي للتتبع
+    previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
     setCurrentGesture('unknown');
   }, []);
 
@@ -117,6 +129,7 @@ export function useGestureRecognition() {
         recognizeGesture(results.multiHandLandmarks);
       } else {
         setCurrentGesture('unknown');
+        previousHandPositionRef.current = null;
       }
 
       canvasCtx.restore();
