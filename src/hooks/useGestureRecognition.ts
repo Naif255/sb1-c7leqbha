@@ -17,18 +17,15 @@ export function useGestureRecognition() {
   const [isReady, setIsReady] = useState(false);
   const handsRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
-  const previousHandPositionRef = useRef<any>(null);
 
   const recognizeGesture = useCallback((landmarks: any) => {
     if (!landmarks || landmarks.length === 0) {
       setCurrentGesture('unknown');
-      previousHandPositionRef.current = null;
       return;
     }
 
     const hand = landmarks[0];
     
-    // النقاط المهمة
     const thumbTip = hand[4];
     const indexTip = hand[8];
     const indexPIP = hand[6];
@@ -38,70 +35,55 @@ export function useGestureRecognition() {
     const ringPIP = hand[14];
     const pinkyTip = hand[20];
     const pinkyPIP = hand[18];
-    const wrist = hand[0];
 
-    // ☝️ 1. التوحيد - إصبع السبابة للأعلى فقط
-    const indexUp = indexTip.y < indexPIP.y - 0.05;
-    const middleDown = middleTip.y > middlePIP.y;
-    const ringDown = ringTip.y > ringPIP.y;
-    const pinkyDown = pinkyTip.y > pinkyPIP.y;
+    const indexUp = indexTip.y < indexPIP.y - 0.04;
+    const middleUp = middleTip.y < middlePIP.y - 0.04;
+    const ringUp = ringTip.y < ringPIP.y - 0.04;
+    const pinkyUp = pinkyTip.y < pinkyPIP.y - 0.04;
     
+    const indexDown = indexTip.y > indexPIP.y + 0.02;
+    const middleDown = middleTip.y > middlePIP.y + 0.02;
+    const ringDown = ringTip.y > ringPIP.y + 0.02;
+    const pinkyDown = pinkyTip.y > pinkyPIP.y + 0.02;
+
     if (indexUp && middleDown && ringDown && pinkyDown) {
       setCurrentGesture('index_finger_up');
-      previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
       return;
     }
 
-    // 🙌 2. الأبدي - راحتا اليدين للأمام (كل الأصابع ممدودة)
-    const allFingersUp = 
-      indexTip.y < indexPIP.y &&
-      middleTip.y < middlePIP.y &&
-      ringTip.y < ringPIP.y &&
-      pinkyTip.y < pinkyPIP.y;
-    
-    // التأكد إن الكف مواجه (z قريب من بعض)
+    const allFingersExtended = indexUp && middleUp && ringUp && pinkyUp;
     const palmFacing = Math.abs(indexTip.z - pinkyTip.z) < 0.08;
     
-    if (allFingersUp && palmFacing) {
+    if (allFingersExtended && palmFacing) {
       setCurrentGesture('palms_facing');
-      previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
       return;
     }
 
-    // ↔️ 3. النفي - حركة اليدين بعيداً (نكتشف الحركة)
-    if (previousHandPositionRef.current && allFingersUp) {
-      const currentX = wrist.x;
-      const previousX = previousHandPositionRef.current.x;
-      const movement = Math.abs(currentX - previousX);
-      
-      // إذا في حركة أفقية واضحة
-      if (movement > 0.08) {
-        setCurrentGesture('hands_moving_apart');
-        previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
-        return;
-      }
+    const palmSideways = Math.abs(indexTip.z - pinkyTip.z) > 0.12;
+    
+    if (allFingersExtended && palmSideways) {
+      setCurrentGesture('hands_moving_apart');
+      return;
     }
 
-    // 🤲 4. المساواة - لمس أطراف الأصابع (الإبهام والسبابة قريبين جداً)
-    const fingertipsDistance = Math.sqrt(
+    const thumbIndexDistance = Math.sqrt(
       Math.pow(thumbTip.x - indexTip.x, 2) + 
       Math.pow(thumbTip.y - indexTip.y, 2) +
       Math.pow(thumbTip.z - indexTip.z, 2)
     );
     
-    // إذا كل الأصابع قريبة من بعض (شكل قبة)
-    const allFingertipsClose = 
-      fingertipsDistance < 0.06 &&
-      Math.sqrt(Math.pow(thumbTip.x - middleTip.x, 2) + Math.pow(thumbTip.y - middleTip.y, 2)) < 0.08;
+    const thumbMiddleDistance = Math.sqrt(
+      Math.pow(thumbTip.x - middleTip.x, 2) + 
+      Math.pow(thumbTip.y - middleTip.y, 2)
+    );
     
-    if (allFingertipsClose) {
+    const fingertipsTogether = thumbIndexDistance < 0.07 && thumbMiddleDistance < 0.09;
+    
+    if (fingertipsTogether) {
       setCurrentGesture('fingertips_touch');
-      previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
       return;
     }
 
-    // حفظ الموقع الحالي للتتبع
-    previousHandPositionRef.current = { x: wrist.x, y: wrist.y };
     setCurrentGesture('unknown');
   }, []);
 
@@ -129,7 +111,6 @@ export function useGestureRecognition() {
         recognizeGesture(results.multiHandLandmarks);
       } else {
         setCurrentGesture('unknown');
-        previousHandPositionRef.current = null;
       }
 
       canvasCtx.restore();
